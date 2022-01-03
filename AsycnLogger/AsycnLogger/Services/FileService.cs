@@ -17,7 +17,7 @@ namespace AsyncLogger
                 dirInfo.Create();
             }
 
-            return new StreamWriter(newFileName, false);
+            return new StreamWriter(newFileName, true);
         }
 
         public async Task<string> ReadAllFile(string dirPath, string fileName)
@@ -36,13 +36,15 @@ namespace AsyncLogger
         {
             await _semaphoreSlim.WaitAsync();
 
-            using (var usedStream = (StreamWriter)stream)
-            {
-                await usedStream.WriteLineAsync(text);
-                await usedStream.FlushAsync();
-            }
+            await ((StreamWriter)stream).WriteLineAsync(text);
+            await ((StreamWriter)stream).FlushAsync();
 
             _semaphoreSlim.Release();
+        }
+
+        public void CloseFile(IDisposable stream)
+        {
+            ((StreamWriter)stream).Close();
         }
     }
 }

@@ -1,5 +1,5 @@
 ﻿using System;
-using System.Threading;
+using System.Collections.Generic;
 using System.Threading.Tasks;
 
 namespace AsyncLogger
@@ -7,7 +7,7 @@ namespace AsyncLogger
     public class Logger : ILogger
     {
         private readonly object _lock = new object();
-        private LoggerMessage _massage;
+        private Queue<LoggerMessage> _messages = new Queue<LoggerMessage>();
         private IFileService _fileService;
         public Logger(IFileService fileService)
         {
@@ -15,33 +15,34 @@ namespace AsyncLogger
         }
 
         public event Action StartBackup;
-        public int RecordsForBackup { get; set; }
+        public LoggerConfig LoggerConfig { get; set; }
         public IDisposable LoggerStream { get; set; }
-        public void Run()
+        public async Task Run()
         {
-            LoggerMessage massage = null;
+            LoggerMessage message = null;
             var counter = 0;
-            var limit = RecordsForBackup;
+            var limit = LoggerConfig.RecordsForBackup;
             while (true)
             {
-                lock (_lock)
+                lock (_messages)
                 {
-                    if (_massage != null)
+                    if (_messages.Count != 0)
                     {
-                        massage = _massage;
-                        _massage = null;
+                        message = _messages.Dequeue();
                     }
                 }
 
-                if (massage != null)
+                if (message != null)
                 {
-                    Task.Run(() => InternalLogInfo(_massage.Type, _massage.Message));
-                    massage = null;
+                    await InternalLogInfo(message.Type, message.Message);
+                    message = null;
                     counter++;
                     if (counter >= limit)
                     {
+                        await Task.Run(() => _fileService.CloseFile(LoggerStream));
+                        await Task.Run(() => StartBackup?.Invoke());
+                        LoggerStream = _fileService.CreateFile(LoggerConfig.LogDirectory, LoggerConfig.LogFileName);
                         counter = 0;
-                        Task.Run(() => StartBackup?.Invoke());
                     }
                 }
             }
@@ -50,14 +51,19 @@ namespace AsyncLogger
         public void LogInfo(LogType type, string message)
         {
             var newMessage = new LoggerMessage { Type = type, Message = message };
-            Interlocked.Exchange<LoggerMessage>(ref _massage, newMessage);
+            lock (_lock)
+            {
+                _messages.Enqueue(newMessage);
+            }
+
+            // Interlocked.Exchange<LoggerMessage>(ref _massage, newMessage);
         }
 
-        private void InternalLogInfo(LogType type, string message)
+        private async Task InternalLogInfo(LogType type, string message)
         {
             string report = $"{DateTime.UtcNow.ToString()} : {type.ToString()} : {message}";
             Console.WriteLine(report);
-            _fileService.WriteToFile(LoggerStream, report);
+            await _fileService.WriteToFile(LoggerStream, report);
         }
     }
 }

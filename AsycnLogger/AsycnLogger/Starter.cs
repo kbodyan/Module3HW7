@@ -27,14 +27,16 @@ namespace AsyncLogger
         public void Run()
         {
             Config = _configService.GetConfig();
-            _logger.RecordsForBackup = Config.Logger.RecordsForBackup;
+            _logger.LoggerConfig = Config.Logger;
             _logger.LoggerStream = _fileService.CreateFile(Config.Logger.LogDirectory, Config.Logger.LogFileName);
             _logger.StartBackup += BackupCallback;
-            Thread myThread = new Thread(new ThreadStart(_logger.Run));
+            Thread myThread = new Thread(new ThreadStart(() => _logger.Run()));
             myThread.IsBackground = true;
             myThread.Start();
 
-            Task.Run(() => Action());
+            Action();
+            Console.ReadLine();
+            _fileService.CloseFile(_logger.LoggerStream);
         }
 
         public void Action()
@@ -45,7 +47,7 @@ namespace AsyncLogger
             {
                 var k = i;
                 logType = (LogType)rand.Next(0, 3);
-                Task.Run(() => _logger.LogInfo(logType, $"This is log # {k}"));
+                _logger.LogInfo(logType, $"This is log # {k}");
             }
         }
     }
