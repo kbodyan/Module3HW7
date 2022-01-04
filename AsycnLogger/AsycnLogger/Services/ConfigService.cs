@@ -7,7 +7,7 @@ namespace AsyncLogger
     {
         public Config GetConfig()
         {
-            var configFile = File.ReadAllText("config.json");
+            var configFile = File.ReadAllText("../config.json");
             var config = JsonConvert.DeserializeObject<Config>(configFile);
             return config;
         }

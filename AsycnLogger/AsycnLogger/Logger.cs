@@ -14,7 +14,7 @@ namespace AsyncLogger
             _fileService = fileService;
         }
 
-        public event Action StartBackup;
+        public event Action<string> StartBackup;
         public LoggerConfig LoggerConfig { get; set; }
         public IDisposable LoggerStream { get; set; }
         public async Task Run()
@@ -39,8 +39,9 @@ namespace AsyncLogger
                     counter++;
                     if (counter >= limit)
                     {
-                        await Task.Run(() => _fileService.CloseFile(LoggerStream));
-                        await Task.Run(() => StartBackup?.Invoke());
+                        await _fileService.CloseFile(LoggerStream);
+                        var content = await _fileService.ReadAllFile(LoggerConfig.LogDirectory, LoggerConfig.LogFileName);
+                        await Task.Run(() => StartBackup?.Invoke(content));
                         LoggerStream = _fileService.CreateFile(LoggerConfig.LogDirectory, LoggerConfig.LogFileName);
                         counter = 0;
                     }
@@ -48,15 +49,16 @@ namespace AsyncLogger
             }
         }
 
-        public void LogInfo(LogType type, string message)
+        public async Task LogInfo(LogType type, string message)
         {
-            var newMessage = new LoggerMessage { Type = type, Message = message };
-            lock (_lock)
+            await Task.Run(() =>
             {
-                _messages.Enqueue(newMessage);
-            }
-
-            // Interlocked.Exchange<LoggerMessage>(ref _massage, newMessage);
+                var newMessage = new LoggerMessage { Type = type, Message = message };
+                lock (_messages)
+                {
+                    _messages.Enqueue(newMessage);
+                }
+            });
         }
 
         private async Task InternalLogInfo(LogType type, string message)

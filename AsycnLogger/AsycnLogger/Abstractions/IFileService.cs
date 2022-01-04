@@ -5,7 +5,7 @@ namespace AsyncLogger
 {
     public interface IFileService
     {
-        void CloseFile(IDisposable stream);
+        public Task CloseFile(IDisposable stream);
         IDisposable CreateFile(string dirPath, string fileName);
         Task<string> ReadAllFile(string dirPath, string fileName);
         Task WriteToFile(IDisposable stream, string text);

@@ -12,14 +12,16 @@ namespace AsyncLogger
             _fileService = fileService;
         }
 
+        public BackupConfig BackupConfig { get; set; }
         public string BackupDirectory { get; set; }
-        public async Task Backup(Config config)
+        public async Task Backup(string content)
         {
             var time = DateTime.UtcNow;
-            var filename = $"{config.Backup.BackupDirectory}/{time.Hour}.{time.Minute}.{time.Second} {time.ToShortDateString()}.txt";
-            var content = await _fileService.ReadAllFile(config.Logger.LogDirectory, config.Logger.LogFileName);
-            var backupFile = _fileService.CreateFile(config.Backup.BackupDirectory, filename);
+            var filename = $"{BackupConfig.BackupDirectory}/{time.Hour}.{time.Minute}.{time.Second} {time.ToShortDateString()}.txt";
+            var backupFile = _fileService.CreateFile(BackupConfig.BackupDirectory, filename);
             await _fileService.WriteToFile(backupFile, content);
+            await _fileService.CloseFile(backupFile);
+            await Task.Delay(1000);
         }
     }
 }

@@ -4,8 +4,9 @@ namespace AsyncLogger
 {
     public interface IBackupService
     {
+        BackupConfig BackupConfig { get; set; }
         string BackupDirectory { get; set; }
 
-        Task Backup(Config config);
+        Task Backup(string content);
     }
 }

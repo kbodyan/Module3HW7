@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -19,36 +20,41 @@ namespace AsyncLogger
         }
 
         public Config Config { get; set; }
-        public void BackupCallback()
+        public void BackupCallback(string content)
         {
-            _backupService.Backup(Config);
+            _backupService.Backup(content);
         }
 
-        public void Run()
+        public async Task Run()
         {
             Config = _configService.GetConfig();
             _logger.LoggerConfig = Config.Logger;
             _logger.LoggerStream = _fileService.CreateFile(Config.Logger.LogDirectory, Config.Logger.LogFileName);
+            _backupService.BackupConfig = Config.Backup;
             _logger.StartBackup += BackupCallback;
             Thread myThread = new Thread(new ThreadStart(() => _logger.Run()));
             myThread.IsBackground = true;
             myThread.Start();
 
-            Action();
-            Console.ReadLine();
-            _fileService.CloseFile(_logger.LoggerStream);
+            await Action();
+            await Action();
+            Console.ReadKey();
+            await _fileService.CloseFile(_logger.LoggerStream);
         }
 
-        public void Action()
+        public async Task Action()
         {
-            var rand = new Random();
-            LogType logType;
-            for (int i = 0; i < 50; i++)
+            await Task.Run(() =>
             {
-                var k = i;
-                logType = (LogType)rand.Next(0, 3);
-                _logger.LogInfo(logType, $"This is log # {k}");
-            }
+                var rand = new Random();
+                LogType logType;
+                for (int i = 0; i < 50; i++)
+                {
+                    var k = i;
+                    logType = (LogType)rand.Next(0, 3);
+                    Task.Run(async () => await _logger.LogInfo(logType, $"This is log # {k}"));
+                }
+            });
         }
     }
 }

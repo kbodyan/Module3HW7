@@ -5,10 +5,10 @@ namespace AsyncLogger
 {
     public interface ILogger
     {
-        event Action StartBackup;
+        event Action<string> StartBackup;
         LoggerConfig LoggerConfig { get; set; }
         IDisposable LoggerStream { get; set; }
-        void LogInfo(LogType type, string message);
+        Task LogInfo(LogType type, string message);
         Task Run();
     }
 }

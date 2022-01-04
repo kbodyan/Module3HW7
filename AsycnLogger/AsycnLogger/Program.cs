@@ -16,7 +16,7 @@ namespace AsyncLogger
                 .BuildServiceProvider();
 
             var start = serviceProvider.GetService<Starter>();
-            start.Run();
+            start.Run().GetAwaiter().GetResult();
         }
     }
 }

@@ -8,6 +8,7 @@ namespace AsyncLogger
     public class FileService : IFileService
     {
         private static readonly SemaphoreSlim _semaphoreSlim = new SemaphoreSlim(1);
+        private static bool _start = true;
         public IDisposable CreateFile(string dirPath, string fileName)
         {
             DirectoryInfo dirInfo = new DirectoryInfo(dirPath);
@@ -15,6 +16,12 @@ namespace AsyncLogger
             if (!dirInfo.Exists)
             {
                 dirInfo.Create();
+            }
+
+            if (_start && File.Exists(newFileName))
+            {
+                _start = false;
+                return new StreamWriter(newFileName, false);
             }
 
             return new StreamWriter(newFileName, true);
@@ -29,6 +36,7 @@ namespace AsyncLogger
                 result = await stream.ReadToEndAsync();
             }
 
+            await Task.Delay(1000);
             return result;
         }
 
@@ -42,9 +50,9 @@ namespace AsyncLogger
             _semaphoreSlim.Release();
         }
 
-        public void CloseFile(IDisposable stream)
+        public async Task CloseFile(IDisposable stream)
         {
-            ((StreamWriter)stream).Close();
+            await Task.Run(() => ((StreamWriter)stream).Close());
         }
     }
 }
